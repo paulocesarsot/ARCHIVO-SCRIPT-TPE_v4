@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Extracción de Datos a Tabla</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 6px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+      margin-bottom: 6px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    textarea {
+      height: 160px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 18px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    button + button {
+      margin-left: 10px;
+      background-color: #6c757d;
+    }
+    button + button:hover {
+      background-color: #565e64;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+      font-size: 0.9rem;
+      table-layout: fixed;
+      word-wrap: break-word;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px 6px;
+      text-align: left;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+      tr {
+        margin-bottom: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        padding: 10px;
+        background: #fff;
+      }
+      td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+        white-space: normal;
+        text-align: left;
+      }
+      td::before {
+        position: absolute;
+        top: 8px;
+        left: 10px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: bold;
+        content: attr(data-label);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <label for="nombreUsuario">Nombre de Usuario:</label>
+    <input type="text" id="nombreUsuario" placeholder="Ingrese su nombre" />
+
+    <label for="inputText">Ingrese el texto:</label>
+    <textarea id="inputText" placeholder="Pegue aquí el texto"></textarea>
+
+    <button id="procesarBtn">Procesar y Agregar a Tabla</button>
+    <button id="limpiarBtn">Limpiar Formulario</button>
+    <button id="exportarBtn">Exportar a Excel</button>
+
+    <table id="tablaResultado" aria-label="Tabla de resultados">
+      <thead>
+        <tr>
+          <th>USUARIO</th>
+          <th>FECHA</th>
+          <th>FOLIO</th>
+          <th>NÚMERO DE TICKET</th>
+          <th>SD</th>
+          <th>TCA</th>
+          <th>CLIENTE</th>
+          <th>DIRECCION</th>
+          <th>NUMERO DE CUENTA</th>
+          <th>OT</th>
+          <th>REPORTE DE CLIENTE</th>
+          <th>RAZON SOCIAL</th>
+          <th>SEGMENTO</th>
+          <th>TELÉFONO O CONTACTO</th>
+          <th>EQUIPO U ONT</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const encabezados = [
+      "USUARIO", "FECHA", "FOLIO", "NÚMERO DE TICKET", "SD", "TCA",
+      "CLIENTE", "DIRECCION", "NUMERO DE CUENTA", "OT", "REPORTE DE CLIENTE",
+      "RAZON SOCIAL", "SEGMENTO", "TELÉFONO O CONTACTO", "EQUIPO U ONT"
+    ];
+
+    // Patrones para campos específicos (solo los más relevantes)
+    const patrones = {
+      "FECHA": /Fecha de corte\s*[:\-]?\s*([\d\-\/]+)/i,
+      "NÚMERO DE TICKET": /Número del ticket\s*[:\-]?\s*(\d+)/i,
+      "CLIENTE": /Nombre de quién se comunica\s*[:\-]?\s*([^\n,]+)/i,
+      "DIRECCION": /Dirección de instalación\s*[:\-]?\s*([^\n,]+)/i,
+      "NUMERO DE CUENTA": /Cuenta\s*[:\-]?\s*(\d+)/i,
+      "OT": /OT\s*[:\-]?\s*(\S+)/i,
+      "REPORTE DE CLIENTE": /Falla reportada\s*[:\-]?\s*([^\n,]+)/i,
+      "RAZON SOCIAL": /Razón social\/Titular\s*[:\-]?\s*([^\n,]+)/i,
+      "SEGMENTO": /Segmento\s*[:\-]?\s*([^\n,]+)/i,
+    };
+
+    function generarFila() {
+      const nombre = document.getElementById("nombreUsuario").value.trim();
+      const texto = document.getElementById("inputText").value;
+
+      const fila = {};
+
+      encabezados.forEach(encabezado => {
+        if (encabezado === "USUARIO") {
+          fila[encabezado] = nombre;
+
+        } else if (encabezado === "EQUIPO U ONT") {
+          const marca = texto.match(/Marca y modelo\s*[:\-]?\s*([^\n,]+)/i);
+          const modelo = texto.match(/Modelo de la ONT\s*[:\-]?\s*([^\n,]+)/i);
+          fila[encabezado] = [marca?.[1], modelo?.[1]].filter(Boolean).join(" / ");
+
+        } else if (encabezado === "TELÉFONO O CONTACTO") {
+          const contacto = texto.match(/Contacto para seguimiento\s*[:\-]?\s*([^\n,]+)/i);
+          const telefono = texto.match(/Teléfono Contacto en sitio 1\s*[:\-]?\s*([\d\s]+)/i);
+          fila[encabezado] = [contacto?.[1], telefono?.[1]].filter(Boolean).join(" / ");
+
+        } else if (["SD", "TCA", "TT"].includes(encabezado)) {
+          // Primer match para "TCA123456" o "TCA: 123456"
+          const regex = new RegExp(`\\b${encabezado}\\s*[:\\-]?\\s*(\\d{4,})`, "i");
+          const match = texto.match(regex);
+          fila[encabezado] = match ? `${encabezado}${match[1]}` : "";
+
+        } else if (encabezado === "FOLIO") {
+          // Primer folio genérico
+          const match = texto.match(/(?:folio(?: de servicio)?|número de folio|folio FPE)\s*[:\-]?\s*([A-Z0-9\-]+)/i);
+          fila[encabezado] = match ? match[1].toUpperCase() : "";
+
+        } else if (patrones[encabezado]) {
+          const match = texto.match(patrones[encabezado]);
+          fila[encabezado] = match ? match[1].trim() : "";
+
+        } else {
+          fila[encabezado] = "";
+        }
+      });
+
+      const tbody = document.querySelector("#tablaResultado tbody");
+      const tr = document.createElement("tr");
+
+      encabezados.forEach(e => {
+        const td = document.createElement("td");
+        td.textContent = fila[e];
+        td.setAttribute('data-label', e); // Para diseño responsive
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    }
+
+    // Limpiar formulario y tabla (solo inputs)
+    function limpiarFormulario() {
+      document.getElementById("nombreUsuario").value = "";
+      document.getElementById("inputText").value = "";
+    }
+
+    // Exportar tabla a Excel (usando Blob y URI)
+    function exportarExcel() {
+      const tabla = document.getElementById("tablaResultado");
+      let tablaHTML = tabla.outerHTML.replace(/ /g, '%20');
+
+      const dataType = 'application/vnd.ms-excel';
+      const filename = 'datos_extraidos.xls';
+
+      const downloadLink = document.createElement("a");
+      document.body.appendChild(downloadLink);
+
+      if (navigator.msSaveOrOpenBlob) {
+        const blob = new Blob(['\ufeff', tablaHTML], { type: dataType });
+        navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        downloadLink.href = 'data:' + dataType + ', ' + tablaHTML;
+        downloadLink.download = filename;
+        downloadLink.click();
+      }
+
+      downloadLink.remove();
+    }
+
+    document.getElementById("procesarBtn").addEventListener("click", () => {
+      if (!document.getElementById("nombreUsuario").value.trim()) {
+        alert("Por favor, ingrese su nombre de usuario.");
+        return;
+      }
+      if (!document.getElementById("inputText").value.trim()) {
+        alert("Por favor, ingrese el texto para procesar.");
+        return;
+      }
+      generarFila();
+      limpiarFormulario();
+    });
+
+    document.getElementById("limpiarBtn").addEventListener("click", limpiarFormulario);
+    document.getElementById("exportarBtn").addEventListener("click", exportarExcel);
+  </script>
+</body>
+</html>
